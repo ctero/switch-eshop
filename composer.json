@@ -1,0 +1,21 @@
+{
+    "name": "ctero/switch-eshop",
+    "type": "library",
+    "description": "Nintendo Switch eShop Crawler",
+    "keywords": ["nintendo", "eshop", "prices", "crawler"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Chris Tero"
+        }
+    ],
+    "require": {
+	"php": ">=7.2.0",
+        "guzzlehttp/guzzle": "^6.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "SwitchEshop\\": "src/SwitchEshop/"
+        }
+    }
+}
