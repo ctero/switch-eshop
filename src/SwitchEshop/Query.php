@@ -2,11 +2,8 @@
 
 namespace SwitchEshop;
 
-use SwitchEshop\GameUS;
-use SwitchEshop\ResultSet;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Psr7\Request;
 
 /**
  * Class Query
@@ -15,14 +12,25 @@ use GuzzleHttp\Psr7\Request;
 class Query
 {
 
-    /** @var string */
-    const GAMES_US_URL = 'http://www.nintendo.com/json/content/get/filter/game?system=switch&sort=title&direction=asc&shop=ncom';
+    /** @var Client Guzzle Client */
+    private $client;
 
-    /** @var string */
-    const PRICE_URL = 'https://api.ec.nintendo.com/v1/price?lang=en';
+    /** @var array API URLs for various eShops. */
+    private $games_url = [
+        'americas' => 'http://www.nintendo.com/json/content/get/filter/game'
+    ];
 
-    /** @var Client */
-    protected $client;
+    /** @var array Default filter options for eShops. */
+    private $options = [
+        'americas' => [
+            'shop' => 'ncom',
+            'system' => 'switch',
+            'sort' => 'title',
+            'direction' => 'asc',
+            'offset' => 0,
+            'limit' => '50'
+        ]
+    ];
 
     /**
      * Query constructor.
@@ -33,53 +41,27 @@ class Query
     }
 
     /**
-     * Call the eShop.
+     * Query the eShop for game information.
      *
      * @param array $request
-     * @param string $country
-     * @return bool|string
+     * @return bool|ResultSet
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    private function callShop(array $request = [], $country = 'US')
+    public function getGames(array $request = [])
     {
         $method = 'GET';
-        $request['offset'] = isset($request['offset']) ? $request['offset'] : 0;
-        $request['limit'] = isset($request['limit']) ? $request['limit'] : 200;
-        switch ($country) {
-            case 'US':
-            default:
-                $fetchUrl = self::GAMES_US_URL;
-                break;
-        }
-        $url = $fetchUrl . '&' . http_build_query($request);
+        $request = array_merge($this->options['americas'], $request);
+
         try {
-            $response = $this->client->request($method, $url);
+            $resp = $this->client->request($method, $this->games_url['americas'], ['query' => $request]);
         } catch (RequestException $e) {
             return false;
         }
-        return json_decode($response->getBody()->getContents());
-    }
 
-    /**
-     * Compiles games information.
-     *
-     * @param array $request
-     * @param string $country
-     * @return bool|\SwitchEshop\ResultSet
-     * @throws \GuzzleHttp\Exception\GuzzleException
-     */
-    public function getGames(array $request = [], $country = 'US')
-    {
-        switch ($country) {
-            case 'US':
-            default:
-                $gameClass = GameUS::class;
-                break;
-        }
-        $resp = $this->callShop($request);
-        if (!$resp instanceof \stdClass) {
+        if (!$resp) {
             return false;
         }
+        $resp = json_decode($resp->getBody()->getContents());
 
         $rs = new ResultSet();
         $rs->total = $resp->filter->total;
@@ -87,7 +69,7 @@ class Query
         $rs->limit = $resp->games->limit;
 
         foreach ($resp->games->game as $game) {
-            $rs->games[] = new $gameClass($game);
+            $rs->games[] = new GameUS($game);
         }
 
         return $rs;
